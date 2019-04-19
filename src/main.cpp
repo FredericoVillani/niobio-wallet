@@ -22,6 +22,7 @@
 #include "Update.h"
 #include <QTextCodec>
 #include "PaymentServer.h"
+#include "WalletNodes.h"
 
 #define DEBUG 1
 
@@ -115,6 +116,8 @@ int main(int argc, char* argv[]) {
     QMessageBox::warning(nullptr, QObject::tr("Fail"), QObject::tr("%1 wallet already running or I cannot create lock file %2. Check your permissions.").arg(CurrencyAdapter::instance().getCurrencyDisplayName()).arg(Settings::instance().getDataDir().absoluteFilePath(QApplication::applicationName() + ".lock")));
     return 0;
   }
+  auto wNodes = new WalletNodes;
+  wNodes->GetWalletNodes();
 
   SignalHandler::instance().init();
   QObject::connect(&SignalHandler::instance(), &SignalHandler::quitSignal, &app, &QApplication::quit);
@@ -129,22 +132,24 @@ int main(int argc, char* argv[]) {
   app.processEvents();
   qRegisterMetaType<CryptoNote::TransactionId>("CryptoNote::TransactionId");
   qRegisterMetaType<quintptr>("quintptr");
-
-  if (!NodeAdapter::instance().init()) {
+  bool nodeInit = false;
+  nodeInit = NodeAdapter::instance().init();
+  splash->finish(&MainWindow::instance());
+  if (!(nodeInit)) {
     QString connection = Settings::instance().getConnection();
     if(connection.compare("remote") == 0) {
-      QMessageBox::warning(nullptr, QObject::tr("Fail"), QObject::tr("Remote node %1 is not responding. Please select another one on Settings->Connection page, or select AUTO to use a local blockchain.").arg(Settings::instance().getCurrentRemoteNode()));
+      QMessageBox::warning(nullptr, QObject::tr("Fail"), QObject::tr("Wallet node %1 is not responding. Please select another one on Wallet Nodes Frame, or select AUTO on Settings->Connection page to use a local blockchain.").arg(Settings::instance().getCurrentRemoteNode()));
     } else {
       return 0;
     }
   }
-  splash->finish(&MainWindow::instance());
   Updater d;
-    d.checkForUpdate();
+  d.checkForUpdate();
+
   MainWindow::instance().show();
   WalletAdapter::instance().open("");
 
-  QTimer::singleShot(1000, paymentServer, SLOT(uiReady()));
+  QTimer::singleShot(10000, paymentServer, SLOT(uiReady()));
   QObject::connect(paymentServer, &PaymentServer::receivedURI, &MainWindow::instance(), &MainWindow::handlePaymentRequest, Qt::QueuedConnection);
 
   QObject::connect(QApplication::instance(), &QApplication::aboutToQuit, []() {

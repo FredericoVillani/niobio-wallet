@@ -8,6 +8,8 @@
 #include <QFile>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTextCodec>
@@ -52,17 +54,16 @@ void Settings::load() {
     cfgFile.close();
     if (!m_settings.contains("walletFile")) {
       m_addressBookFile = getDataDir().absoluteFilePath(QCoreApplication::applicationName() + ".addressbook");
+      m_walletNodesFile = getDataDir().absoluteFilePath(QCoreApplication::applicationName() + ".walletnodes");
     } else {
       m_addressBookFile = m_settings.value("walletFile").toString();
       m_addressBookFile.replace(m_addressBookFile.lastIndexOf(".wallet"), 7, ".addressbook");
+      m_walletNodesFile = m_settings.value("walletFile").toString();
+      m_walletNodesFile.replace(m_walletNodesFile.lastIndexOf(".wallet"), 7, ".walletnodes");
     }
 
     if (!m_settings.contains(OPTION_LANGUAGE)) {
          m_currentLang = "pt";
-    }
-
-    if (!m_settings.contains(OPTION_CONNECTION)) {
-         m_connectionMode = "auto";
     }
 
     if (!m_settings.contains(OPTION_DAEMON_PORT)) {
@@ -71,6 +72,7 @@ void Settings::load() {
 
   } else {
     m_addressBookFile = getDataDir().absoluteFilePath(QCoreApplication::applicationName() + ".addressbook");
+    m_walletNodesFile = getDataDir().absoluteFilePath(QCoreApplication::applicationName() + ".walletnodes");
   }
 
   if (m_settings.contains(OPTION_LANGUAGE)) {
@@ -79,6 +81,13 @@ void Settings::load() {
 
   if (m_settings.contains(OPTION_CONNECTION)) {
         m_connectionMode = m_settings.value(OPTION_CONNECTION).toString();
+  } else {
+    m_settings.insert(OPTION_CONNECTION, "remote");
+    m_connectionMode = "remote";
+  }
+
+  if (!m_settings.contains(OPTION_REMOTE_NODE)) {
+    m_settings.insert(OPTION_REMOTE_NODE, "node0001.niobiocash.nl:8314");
   }
 
   if (!m_settings.contains(OPTION_DAEMON_PORT)) {
@@ -115,7 +124,8 @@ void Settings::load() {
 
   QStringList defaultNodesList;
   defaultNodesList << "remote-nbr-hydra.niobioco.in:8314"
-  << "remote-nbr-002.niobioco.in:8314";
+  << "remote-nbr-002.niobioco.in:8314"
+  << "node0001.niobiocash.nl:8314";
   if (!m_settings.contains(OPTION_RPCNODES)) {
     setRpcNodesList(QStringList() << defaultNodesList);
   } else {
@@ -127,6 +137,8 @@ void Settings::load() {
     }
     setRpcNodesList(nodesList);
   }
+  //auto wNodes = new WalletNodes;
+  //wNodes->GetWalletNodes();
 
   if (!m_settings.contains("recentWallets")) {
      QStringList recentWallets;
@@ -211,6 +223,10 @@ QString Settings::getAddressBookFile() const {
   return m_addressBookFile;
 }
 
+QString Settings::getWalletNodesFile() const {
+  return m_walletNodesFile;
+}
+
 bool Settings::isEncrypted() const {
   return m_settings.contains("encrypted") ? m_settings.value("encrypted").toBool() : false;
 }
@@ -246,10 +262,10 @@ QString Settings::getLanguage() const {
 QString Settings::getConnection() const {
     QString connection;
     if (m_settings.contains(OPTION_CONNECTION)) {
-        connection = m_settings.value(OPTION_CONNECTION).toString();
+      connection = m_settings.value(OPTION_CONNECTION).toString();
     }
     else {
-    connection = "auto"; // default
+      connection = "remote"; // default
     }
     return connection;
 }
@@ -263,23 +279,32 @@ QStringList Settings::getRpcNodesList() const {
   return res;
 }
 
+QJsonValue Settings::getRpcNodesListAsJson() const {
+  QJsonValue res;
+  if (m_settings.contains(OPTION_RPCNODES)) {
+    return m_settings.value(OPTION_RPCNODES);
+  } else {
+    return res;
+  }
+}
+
 quint16 Settings::getCurrentLocalDaemonPort() const {
-    quint16 port;
-    if (m_settings.contains(OPTION_DAEMON_PORT)) {
-        port = m_settings.value(OPTION_DAEMON_PORT).toVariant().toInt();
-    }
-    return port;
+  quint16 port;
+  if (m_settings.contains(OPTION_DAEMON_PORT)) {
+    port = m_settings.value(OPTION_DAEMON_PORT).toVariant().toInt();
+  }
+  return port;
 }
 
 QString Settings::getCurrentRemoteNode() const {
-    QString remotenode;
-    if (m_settings.contains(OPTION_REMOTE_NODE)) {
-        remotenode = m_settings.value(OPTION_REMOTE_NODE).toString();
-	}
-	else {
-		remotenode = "45.55.141.227:8313";
-	}
-    return remotenode;
+  QString remotenode;
+  if (m_settings.contains(OPTION_REMOTE_NODE)) {
+    remotenode = m_settings.value(OPTION_REMOTE_NODE).toString();
+  }
+  else {
+    remotenode = "node0001.niobiocash.nl:8314";
+  }
+  return remotenode;
 }
 
 QString Settings::getCurrentPool() const {
@@ -390,6 +415,8 @@ void Settings::setWalletFile(const QString& _file) {
   saveSettings();
   m_addressBookFile = m_settings.value("walletFile").toString();
   m_addressBookFile.replace(m_addressBookFile.lastIndexOf(".wallet"), 7, ".addressbook");
+  m_walletNodesFile = m_settings.value("walletFile").toString();
+  m_walletNodesFile.replace(m_walletNodesFile.lastIndexOf(".wallet"), 7, ".walletnodes");
 }
 
 void Settings::setEncrypted(bool _encrypted) {
@@ -496,7 +523,7 @@ void Settings::setCurrentLocalDaemonPort(const quint16& _daemonPort) {
 
 void Settings::setCurrentRemoteNode(const QString& _remoteNode) {
     if (!_remoteNode.isEmpty()) {
-    m_settings.insert(OPTION_REMOTE_NODE, _remoteNode);
+      m_settings.insert(OPTION_REMOTE_NODE, _remoteNode);
     }
     saveSettings();
 }

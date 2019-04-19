@@ -1,6 +1,6 @@
 // Copyright (c) 2011-2016 The Cryptonote developers
 // Copyright (c) 2015-2016 XDN developers
-// Copyright (c) 2017 - 2018 Niobio developers - Derived work from -Karbowanec-
+// Copyright (c) 2017 - 2019 Niobio Cash developers - Derived work from -Karbowanec-
 // Copyright (c) 2016 - 2018 Karbo developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -39,6 +39,7 @@ private:
   SendGlassFrame* m_glassFrame;
 
   QString remote_node_fee_address;
+  float remote_node_fee_percent;
   quint64 remote_node_fee;
   quint64 total_amount;
 
@@ -50,7 +51,7 @@ private:
   void insertMixin(quint32 _mixinValue);
   void insertDescription(QString _description);
   static bool isValidPaymentId(const QByteArray& _paymentIdString);
-  void onAddressFound(const QString& _address);
+  void onAddressFound(const QJsonObject& _remoteNodeData);
   void reset();
 
   Q_SLOT void addRecipientClicked();
